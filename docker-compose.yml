@@ -1,0 +1,69 @@
+
+# ═══════════════════════════════════════════════════════════════════════
+#  DEV stack: SQLite + FAISS (no external DB required)
+#  Start with:  docker compose up --build
+# ═══════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Ollama (local LLM) ─────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: career_ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+    # Pull the model on first run
+    entrypoint: >
+      sh -c "ollama serve &
+             sleep 5 &&
+             ollama pull llama3 &&
+             wait"
+
+  # ── Backend (FastAPI) ──────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: career_backend
+    env_file: .env
+    environment:
+      - VECTOR_STORE_MODE=dev
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - SQLITE_PATH=/app/data/dev.db
+      - FAISS_INDEX_PATH=/app/data/faiss.index
+      - FAISS_META_PATH=/app/data/faiss_meta.json
+    volumes:
+      - backend_data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ── Frontend (Streamlit) ───────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: career_frontend
+    env_file: .env
+    environment:
+      - API_BASE_URL=http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  backend_data:

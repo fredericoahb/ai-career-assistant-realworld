@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ── Lint ────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (ruff + black)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lint tools
+        run: pip install ruff black
+
+      - name: Run ruff
+        run: ruff check app tests
+
+      - name: Check black formatting
+        run: black --check app tests
+
+
+  # ── Unit & Integration Tests ────────────────────────────────────────────────
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      # Force DEV/SQLite mode for CI (no external services needed)
+      VECTOR_STORE_MODE: dev
+      SQLITE_PATH: ./data/ci.db
+      FAISS_INDEX_PATH: ./data/ci.faiss
+      FAISS_META_PATH: ./data/ci_meta.json
+      SECRET_KEY: ci-test-secret-key-not-for-production
+      LLM_PROVIDER: ollama          # mocked in tests, never actually called
+      OLLAMA_BASE_URL: http://localhost:11434
+      OLLAMA_MODEL: llama3
+      STRICT_MODE: "true"
+      EMBEDDING_MODEL: all-MiniLM-L6-v2
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create data dir
+        run: mkdir -p data
+
+      - name: Run unit tests (chunker)
+        run: pytest tests/test_chunker.py -v --tb=short
+
+      - name: Run integration tests
+        run: pytest tests/test_integration.py -v --tb=short
+
+
+  # ── Docker Build ────────────────────────────────────────────────────────────
+  docker-build:
+    name: Docker build (smoke test)
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: career-backend:ci
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: false
+          tags: career-frontend:ci
+
+
+  # ── Security scan ───────────────────────────────────────────────────────────
+  security:
+    name: Security scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: docker-build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image for scan
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          load: true
+          tags: career-backend:scan
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: career-backend:scan
+          format: table
+          exit-code: "0"      # set to 1 to fail on critical CVEs
+          severity: HIGH,CRITICAL
