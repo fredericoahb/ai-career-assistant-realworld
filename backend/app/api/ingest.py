@@ -73,11 +73,11 @@ async def ingest_document(
 
     # Dedup check
     existing = await db.execute(select(Document).where(Document.content_hash == content_hash))
-    if existing.scalar_one_or_none():
+    existing_doc = existing.scalar_one_or_none()
+    if existing_doc:
         log.info("ingest_deduplicated", filename=filename, hash=content_hash[:12])
-        doc = existing.scalar_one_or_none()
         return IngestResponse(
-            document_id=doc.id, filename=filename, chunks_created=0, deduplicated=True
+            document_id=existing_doc.id, filename=filename, chunks_created=0, deduplicated=True
         )
 
     # Parse text
