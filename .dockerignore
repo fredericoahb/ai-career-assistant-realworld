@@ -1,0 +1,17 @@
+.git
+.github
+.gitignore
+.env
+.env.*
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+data/
+*.md
+LICENSE
+docker-compose*.yml
+frontend/
+tests/

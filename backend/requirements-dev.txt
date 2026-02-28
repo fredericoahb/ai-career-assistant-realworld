@@ -1,0 +1,5 @@
+# Dev/Test dependencies (not included in production Docker image)
+-r requirements.txt
+
+pytest==8.2.0
+pytest-asyncio==0.23.6
