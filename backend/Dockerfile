@@ -1,18 +1,18 @@
 FROM python:3.11-slim
 
-# System deps for faiss, sentence-transformers, pypdf
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar apenas libgomp (necessário para faiss-cpu binário)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Pre-download embedding model to bake into image (optional; remove if image size is a concern)
-# RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+COPY requirements.txt .
+
+# Instalar dependências Python (wheels pré-compilados, sem build-essential)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
