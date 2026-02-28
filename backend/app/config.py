@@ -15,6 +15,7 @@ class VectorStoreMode(str, Enum):
 
 class LLMProvider(str, Enum):
     OLLAMA = "ollama"
+    GROQ = "groq"          # free cloud provider (recommended for deployment)
     OPENAI = "openai"      # optional paid provider
     ANTHROPIC = "anthropic"  # optional paid provider
 
@@ -72,6 +73,10 @@ class Settings(BaseSettings):
     # Anthropic (optional, only if LLM_PROVIDER=anthropic)
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-3-haiku-20240307"
+
+    # Groq (free cloud provider — set LLM_PROVIDER=groq to activate)
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
 
     # ── CORS ─────────────────────────────────────────────────────────────────
     CORS_ORIGINS: list[str] = ["http://localhost:8501", "http://frontend:8501"]

@@ -1,7 +1,10 @@
-"""LLM abstraction: Ollama (local, default) | OpenAI | Anthropic.
+"""LLM abstraction: Ollama (local, default) | Groq (free cloud) | OpenAI | Anthropic.
 
 Provider is chosen at runtime via LLM_PROVIDER env var.
 All providers implement the same `complete(prompt) -> str` interface.
+
+Recommended for cloud deployment: Groq (free tier, fast, llama3 support).
+Get a free key at: https://console.groq.com
 """
 
 from __future__ import annotations
@@ -19,7 +22,7 @@ class LLMClient(ABC):
     async def complete(self, system: str, user: str) -> str: ...
 
 
-# ── Ollama ────────────────────────────────────────────────────────────────────
+# ── Ollama (local) ────────────────────────────────────────────────────────────
 
 class OllamaClient(LLMClient):
     async def complete(self, system: str, user: str) -> str:
@@ -38,6 +41,41 @@ class OllamaClient(LLMClient):
             resp.raise_for_status()
             data = resp.json()
         return data["message"]["content"]
+
+
+# ── Groq (free cloud) ─────────────────────────────────────────────────────────
+
+class GroqClient(LLMClient):
+    """Groq offers a generous free tier with very fast inference.
+    Supports: llama-3.1-8b-instant, llama-3.3-70b-versatile, mixtral-8x7b-32768.
+    Get a free API key at: https://console.groq.com
+    """
+
+    async def complete(self, system: str, user: str) -> str:
+        import httpx  # noqa: PLC0415
+
+        headers = {
+            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": settings.GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "max_tokens": 1024,
+            "temperature": 0.1,
+        }
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        return data["choices"][0]["message"]["content"]
 
 
 # ── OpenAI (optional) ─────────────────────────────────────────────────────────
@@ -84,6 +122,8 @@ def get_llm_client() -> LLMClient:
         match settings.LLM_PROVIDER:
             case LLMProvider.OLLAMA:
                 _client = OllamaClient()
+            case LLMProvider.GROQ:
+                _client = GroqClient()
             case LLMProvider.OPENAI:
                 _client = OpenAIClient()
             case LLMProvider.ANTHROPIC:

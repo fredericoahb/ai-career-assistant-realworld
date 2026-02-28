@@ -3,7 +3,7 @@
 > **A production-grade RAG chatbot that answers questions about a professional profile
 > with factual, cited answers — running 100% locally with no paid API required.**
 
-[![CI](https://github.com/fredericoahb/ai-career-assistant-realworld/actions/workflows/ci.yml/badge.svg)](https://github.com/fredericoahb/ai-career-assistant-realworld/actions/workflows/ci.yml)
+[![CI](https://github.com/YOUR_USERNAME/ai-career-assistant-realworld/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/ai-career-assistant-realworld/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg)](https://fastapi.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -409,7 +409,7 @@ ai-career-assistant-realworld/
 │   │   │   ├── chunker.py          # Markdown-aware sliding-window chunker + dedup
 │   │   │   ├── embedder.py         # sentence-transformers (local, no API)
 │   │   │   ├── vector_store.py     # FAISS (DEV) + pgvector (PROD) adapters
-│   │   │   ├── llm.py              # Ollama / OpenAI / Anthropic clients
+│   │   │   ├── llm.py              # Ollama / Groq / OpenAI / Anthropic clients
 │   │   │   └── pipeline.py         # Full RAG flow: query → cited answer
 │   │   │
 │   │   ├── api/
@@ -455,69 +455,148 @@ ai-career-assistant-realworld/
 
 ---
 
-## Free Deployment Options
+## 🚀 Deploy Gratuito em Produção
 
-> ⚠️ **Note:** Free tiers have resource limits that may vary or change. The options
-> below are provided as starting points; always check the provider's current terms.
+> ⚠️ Free tiers have resource limits that may vary. Always check the provider's current terms.
 
-### Option A — Hugging Face Spaces (Frontend)
+### Arquitetura de deploy recomendada
 
-Hugging Face Spaces supports Streamlit apps for free with a CPU tier.
+```
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│  Usuário → Hugging Face Spaces  →  Railway Backend      │
+│              (Streamlit UI)         (FastAPI + FAISS)   │
+│                    ↓                       ↓            │
+│              100% gratuito          Groq API (grátis)   │
+│                                    (LLM na nuvem)       │
+└─────────────────────────────────────────────────────────┘
+```
 
-1. Create a new Space at https://huggingface.co/new-space
-2. Select **Streamlit** runtime
-3. Push `frontend/` contents to the Space repository
-4. Add a Space secret: `API_BASE_URL=https://your-backend-url`
+**Por que Groq?** Ollama não roda em nuvem gratuita (precisa de muita RAM).
+O Groq oferece um free tier generoso com llama3, é extremamente rápido (~500 tok/s)
+e não exige cartão de crédito.
 
-**Limitation:** The free CPU tier has limited RAM and will sleep after inactivity.
+---
 
-### Option B — Railway (Backend)
+### Passo 1 — Obter chave gratuita do Groq
 
-[Railway](https://railway.app) offers a free hobby tier (~$5 credit/month).
+1. Acesse **https://console.groq.com**
+2. Crie uma conta gratuita (sem cartão)
+3. Vá em **API Keys → Create API Key**
+4. Copie a chave (começa com `gsk_...`)
+
+---
+
+### Passo 2 — Deploy do Backend no Railway
+
+1. Acesse **https://railway.app** e faça login com GitHub
+2. Clique em **New Project → Deploy from GitHub repo**
+3. Selecione `ai-career-assistant-realworld`
+4. Railway detecta o `railway.toml` automaticamente
+5. Vá em **Variables** e adicione:
+
+```
+SECRET_KEY=<gere com: python -c "import secrets; print(secrets.token_hex(32))">
+LLM_PROVIDER=groq
+GROQ_API_KEY=gsk_...sua_chave_aqui...
+GROQ_MODEL=llama-3.1-8b-instant
+VECTOR_STORE_MODE=dev
+SQLITE_PATH=/app/data/dev.db
+FAISS_INDEX_PATH=/app/data/faiss.index
+FAISS_META_PATH=/app/data/faiss_meta.json
+STRICT_MODE=true
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+CORS_ORIGINS=["https://seu-space.hf.space","http://localhost:8501"]
+```
+
+6. Clique em **Deploy**
+7. Após o deploy, copie a URL pública (ex: `https://ai-career-assistant.railway.app`)
+8. Teste: `curl https://sua-url.railway.app/health`
+
+> **Nota:** O Railway oferece $5 de crédito grátis por mês no plano Hobby, suficiente
+> para um projeto de portfólio com tráfego leve.
+
+---
+
+### Passo 3 — Deploy do Frontend no Hugging Face Spaces
+
+1. Acesse **https://huggingface.co/new-space**
+2. Preencha:
+   - **Space name:** `ai-career-assistant`
+   - **SDK:** Streamlit
+   - **Visibility:** Public
+3. Clique em **Create Space**
+4. No seu repositório local, adicione o remote do Space:
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Deploy
-railway login
-railway init
-railway up --service backend
-railway variables set --from-file .env
+# Substitua SEU_USERNAME pelo seu usuário do HuggingFace
+git remote add hf https://huggingface.co/spaces/SEU_USERNAME/ai-career-assistant
 ```
 
-### Option C — Render (Backend)
+5. Crie um arquivo `frontend/.streamlit/secrets.toml` **localmente** (não commite):
+```toml
+API_BASE_URL = "https://sua-url.railway.app"
+```
 
-[Render](https://render.com) has a free tier for web services (spins down on inactivity).
-
-1. Connect your GitHub repo
-2. Set root directory to `backend/`
-3. Build command: `pip install -r requirements.txt`
-4. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Add environment variables from `.env.example`
-
-### Option D — Local + Ngrok (Quick Demo)
-
-For a quick demo without deploying:
+6. Faça o push apenas da pasta `frontend/` para o Space:
 
 ```bash
-# Expose local backend
-ngrok http 8000
-# Use the ngrok URL as API_BASE_URL in the Streamlit app
+# Cria um branch temporário só com o frontend
+git subtree push --prefix frontend hf main
 ```
 
-### Ollama on free tier
+7. Vá em **Settings → Repository secrets** no Space e adicione:
+   - `API_BASE_URL` = `https://sua-url.railway.app`
 
-Running a local LLM on free cloud tiers is generally not feasible due to RAM constraints.
-When deploying to the cloud, switch to an API provider:
+---
 
+### Passo 4 — Seed inicial (após deploy no Railway)
+
+```bash
+# URL do seu backend no Railway
+BACKEND=https://sua-url.railway.app
+
+# Registrar admin
+curl -X POST $BACKEND/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","email":"admin@example.com","password":"admin123"}'
+
+# Promover para admin via Railway CLI
+railway run python -c "
+import asyncio
+from app.models.database import AsyncSessionLocal
+from app.models.db import User
+from sqlalchemy import update
+
+async def run():
+    async with AsyncSessionLocal() as s:
+        await s.execute(update(User).where(User.username=='admin').values(is_admin=True))
+        await s.commit()
+        print('Admin promovido!')
+asyncio.run(run())
+"
+
+# Login e ingestão do CV
+TOKEN=$(curl -s -X POST $BACKEND/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"admin123"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+
+curl -X POST $BACKEND/api/ingest \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@data/sample_cv.md"
 ```
-LLM_PROVIDER=openai
-OPENAI_API_KEY=your-key
-```
 
-OpenAI's `gpt-4o-mini` costs approximately $0.15 per 1M input tokens — very low cost
-for a portfolio demo with light traffic.
+---
+
+### Provedores alternativos
+
+| Provedor | Serviço | Free tier | Observação |
+|---|---|---|---|
+| [Render](https://render.com) | Backend | Sim (dorme após inatividade) | Alternativa ao Railway |
+| [Fly.io](https://fly.io) | Backend | Sim (256 MB RAM) | Requer cartão |
+| [Koyeb](https://koyeb.com) | Backend | Sim (512 MB RAM) | Boa alternativa |
+| [Streamlit Cloud](https://share.streamlit.io) | Frontend | Sim | Alternativa ao HF Spaces |
 
 ---
 
