@@ -27,10 +27,10 @@ jobs:
       - name: Install lint tools
         run: pip install ruff black
 
-      - name: Run ruff
+      - name: Run ruff (warn only)
         run: ruff check app tests --exit-zero
 
-      - name: Check black formatting
+      - name: Check black formatting (warn only)
         run: black --check app tests || true
 
 
@@ -43,13 +43,12 @@ jobs:
         working-directory: backend
 
     env:
-      # Force DEV/SQLite mode for CI (no external services needed)
       VECTOR_STORE_MODE: dev
       SQLITE_PATH: ./data/ci.db
       FAISS_INDEX_PATH: ./data/ci.faiss
       FAISS_META_PATH: ./data/ci_meta.json
       SECRET_KEY: ci-test-secret-key-not-for-production
-      LLM_PROVIDER: ollama          # mocked in tests, never actually called
+      LLM_PROVIDER: ollama
       OLLAMA_BASE_URL: http://localhost:11434
       OLLAMA_MODEL: llama3
       STRICT_MODE: "true"
@@ -65,7 +64,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+        run: pip install -r requirements.txt
 
       - name: Create data dir
         run: mkdir -p data
@@ -92,7 +91,8 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          context: .
+          file: ./backend/Dockerfile
           push: false
           tags: career-backend:ci
 
@@ -119,7 +119,8 @@ jobs:
       - name: Build backend image for scan
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          context: .
+          file: ./backend/Dockerfile
           load: true
           tags: career-backend:scan
 
@@ -128,5 +129,5 @@ jobs:
         with:
           image-ref: career-backend:scan
           format: table
-          exit-code: "0"      # set to 1 to fail on critical CVEs
+          exit-code: "0"
           severity: HIGH,CRITICAL
