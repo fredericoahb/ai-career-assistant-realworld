@@ -1,12 +1,14 @@
 # 💼 ai-career-assistant-realworld
 
+![App Demo](./docs/diagrams/demo-animated.svg)
+
 > **A production-grade RAG chatbot that answers questions about a professional profile
 > with factual, cited answers — running locally or in the cloud with no paid LLM required.**
 
 [![CI](https://github.com/fredericoahb/ai-career-assistant-realworld/actions/workflows/ci.yml/badge.svg)](https://github.com/fredericoahb/ai-career-assistant-realworld/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg)](https://fastapi.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/fredericoahb/ai-career-assistant-realworld?quickstart=1)
 
@@ -16,6 +18,9 @@
 
 - [Features](#features)
 - [Architecture](#architecture)
+- [RAG Pipeline](#rag-pipeline-per-query)
+- [Auth & RBAC](#auth--rbac)
+- [Vector Store](#vector-store-dev-vs-prod)
 - [Tech Stack & Design Decisions](#tech-stack--design-decisions)
 - [Quick Start (Docker — 1 command)](#quick-start-docker--1-command)
 - [Manual Setup (Local Dev)](#manual-setup-local-dev)
@@ -40,7 +45,7 @@
 | **Local Embeddings** | `all-MiniLM-L6-v2` via sentence-transformers — no API required |
 | **Strict Mode** | Refuses answers when no evidence exists in the knowledge base |
 | **Citations** | Every claim is annotated with `[Source N]` and the exact source document/section |
-| **Two Vector Stores** | DEV: SQLite + FAISS &nbsp;/&nbsp; PROD: Postgres + pgvector |
+| **Two Vector Stores** | DEV: SQLite + FAISS  /  PROD: Postgres + pgvector |
 | **Auth & RBAC** | JWT, admin role can ingest docs, user role can only chat |
 | **Admin Panel** | Streamlit UI for uploading, listing, and deleting documents |
 | **RealWorld-inspired API** | User registration/login, profile updates, tags — mirroring the [RealWorld spec](https://github.com/gothinkster/realworld) |
@@ -52,72 +57,75 @@
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        Docker Compose                            │
-│                                                                  │
-│  ┌─────────────┐   REST/JSON   ┌──────────────────────────────┐ │
-│  │  Streamlit  │ ────────────► │       FastAPI Backend         │ │
-│  │  (Chat UI + │               │                               │ │
-│  │  Admin UI)  │               │  ┌────────┐  ┌─────────────┐ │ │
-│  └─────────────┘               │  │  Auth  │  │   Ingest    │ │ │
-│                                │  │ (JWT)  │  │  (admin)    │ │ │
-│                                │  └────────┘  └──────┬──────┘ │ │
-│                                │                     │        │ │
-│                                │         ┌───────────▼──────┐ │ │
-│                                │         │   RAG Pipeline   │ │ │
-│                                │         │                  │ │ │
-│                                │         │ 1. Chunker       │ │ │
-│                                │         │ 2. Embedder      │ │ │
-│                                │         │    (local model) │ │ │
-│                                │         │ 3. Vector Store  │ │ │
-│                                │         │    DEV:  FAISS   │ │ │
-│                                │         │    PROD: pgvec   │ │ │
-│                                │         │ 4. Retriever     │ │ │
-│                                │         │ 5. LLM Client    │ │ │
-│                                │         └────────┬─────────┘ │ │
-│                                └──────────────────┼───────────┘ │
-│                                                   │             │
-│  ┌──────────────┐                    ┌────────────▼──────────┐  │
-│  │   SQLite /   │◄───── ORM ────────│      SQLAlchemy       │  │
-│  │  PostgreSQL  │                    └───────────────────────┘  │
-│  └──────────────┘                                               │
-│                                                                  │
-│  ┌──────────────┐                                               │
-│  │  Ollama/Groq │◄──── HTTP ──── LLM Client                    │
-│  │  (llama3)    │                                               │
-│  └──────────────┘                                               │
-└──────────────────────────────────────────────────────────────────┘
-```
+![System Architecture](./docs/diagrams/architecture.svg)
 
-### RAG Flow (per query)
+The system runs as a Docker Compose stack with three services: a **Streamlit frontend** (Chat UI + Admin Panel), a **FastAPI backend** (Auth, Ingest, RAG Pipeline), and a **database layer** that swaps between SQLite+FAISS (dev) and PostgreSQL+pgvector (prod). The LLM provider is fully pluggable via environment variables.
 
 ```
-User question
-     │
-     ▼
-embed_query()          ← sentence-transformers, always local, no API
-     │
-     ▼
-vector_store.search()  ← FAISS (DEV) or pgvector (PROD)
-     │
-     ▼
-filter by SIMILARITY_THRESHOLD
-     │ no results + STRICT_MODE=true
-     ├─────────────────────────────► "No evidence found" (safe refusal)
-     │
-     ▼ results found
-assemble context block  ← "[Source N] (filename § Section)\n<chunk text>"
-     │
-     ▼
-LLM.complete(system_prompt, context + question)
-     │
-     ▼
-Answer with inline citations [Source 1], [Source 2]…
-     │
-     ▼
-Return to client with full citation metadata
+User → Streamlit (8501) → FastAPI (8000) → RAG Pipeline → LLM (Ollama/Groq)
+                                        ↓
+                                  SQLite/PostgreSQL
 ```
+
+---
+
+## RAG Pipeline (per query)
+
+![RAG Pipeline Flow](./docs/diagrams/rag-pipeline.svg)
+
+Each incoming question goes through a 5-stage pipeline:
+
+1. **Embed Query** — `sentence-transformers` converts the question to a vector (always local, no API calls)
+2. **Vector Search** — FAISS (dev) or pgvector (prod) finds the top-K most similar chunks
+3. **Similarity Threshold** — chunks below `SIMILARITY_THRESHOLD` (default `0.30`) are dropped
+4. **Strict Mode Guard** — if no chunks pass the threshold and `STRICT_MODE=true`, returns a safe refusal
+5. **Context Assembly + LLM** — surviving chunks are formatted as `[Source N] (filename § Section)` and sent to the LLM, which produces a cited answer
+
+### Example Response
+
+```json
+{
+  "answer": "The candidate holds three certifications: Google Professional Cloud Architect (2023) [Source 1], CKA from CNCF (2022) [Source 2], and AWS Solutions Architect – Associate (2020) [Source 3].",
+  "citations": [
+    { "index": 1, "source_label": "sample_cv.md § Certifications", "excerpt": "Google Professional Cloud Architect (2023)..." },
+    { "index": 2, "source_label": "sample_cv.md § Certifications", "excerpt": "Certified Kubernetes Administrator (CKA)..." },
+    { "index": 3, "source_label": "sample_cv.md § Certifications", "excerpt": "AWS Solutions Architect – Associate (2020)..." }
+  ],
+  "has_evidence": true,
+  "session_id": 1
+}
+```
+
+---
+
+## Auth & RBAC
+
+![Auth and RBAC Flow](./docs/diagrams/auth-rbac.svg)
+
+Authentication uses **JWT (HS256)** with a 7-day expiry. Passwords are hashed with **bcrypt**. FastAPI's dependency injection system enforces role-based access:
+
+- `get_current_user()` — verifies the token and loads the user for all protected routes
+- `require_admin()` — additionally checks `is_admin=True`, gates all ingest/delete operations
+
+| Role | Allowed Endpoints |
+|---|---|
+| **user** | `POST /api/chat`, `GET /api/users/me`, `PUT /api/users/me`, `GET /api/tags` |
+| **admin** | All user endpoints + `POST /api/ingest`, `GET /api/ingest`, `DELETE /api/ingest/{id}` |
+
+---
+
+## Vector Store (DEV vs PROD)
+
+![Vector Store Dev vs Prod](./docs/diagrams/vector-store.svg)
+
+The vector store is abstracted behind a common interface (`search()`, `add()`, `delete()`). Switching modes requires only a single environment variable change — no code modifications:
+
+| Mode | Database | Vector Index | Use Case |
+|---|---|---|---|
+| `dev` | SQLite (local file) | FAISS (in-memory + `.index` file) | Local development, CI, Codespaces |
+| `prod` | PostgreSQL (asyncpg) | pgvector extension (ANN index) | Cloud deployment, Railway, production |
+
+The **LLM provider** is equally swappable: `ollama` → `groq` → `openai` → `anthropic`, all configured via `.env`.
 
 ---
 
@@ -268,28 +276,6 @@ Full interactive docs available at **http://localhost:8000/docs** (Swagger UI).
 | `POST` | `/api/chat` | ✓ | Ask a question; returns cited answer |
 | `GET` | `/api/chat/sessions/{id}/history` | ✓ | Get full conversation history |
 
-#### `POST /api/chat` — Example
-
-```json
-// Request
-{
-  "question": "What cloud certifications does the candidate hold?",
-  "session_id": null
-}
-
-// Response
-{
-  "answer": "The candidate holds three certifications: Google Professional Cloud Architect (2023) [Source 1], CKA from CNCF (2022) [Source 2], and AWS Solutions Architect – Associate (2020) [Source 3].",
-  "citations": [
-    { "index": 1, "source_label": "sample_cv.md § Certifications", "excerpt": "Google Professional Cloud Architect (2023)..." },
-    { "index": 2, "source_label": "sample_cv.md § Certifications", "excerpt": "Certified Kubernetes Administrator (CKA)..." },
-    { "index": 3, "source_label": "sample_cv.md § Certifications", "excerpt": "AWS Solutions Architect – Associate (2020)..." }
-  ],
-  "has_evidence": true,
-  "session_id": 1
-}
-```
-
 ### Ingest (Admin only)
 
 | Method | Path | Auth | Description |
@@ -309,7 +295,7 @@ Full interactive docs available at **http://localhost:8000/docs** (Swagger UI).
 
 ## Environment Variables
 
-See [`.env.example`](.env.example) for the full list with comments.
+See [`.env.example`](./.env.example) for the full list with comments.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -435,6 +421,13 @@ ai-career-assistant-realworld/
 ├── data/
 │   └── sample_cv.md                # Fictional CV for demo (no real PII)
 │
+├── docs/
+│   └── diagrams/                   # Architecture & flow diagrams
+│       ├── architecture.svg
+│       ├── rag-pipeline.svg
+│       ├── auth-rbac.svg
+│       └── vector-store.svg
+│
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                  # lint → test → docker build → trivy scan
@@ -523,6 +516,7 @@ curl -X POST $BACKEND/api/ingest \
 ```
 
 To promote admin, use the Railway shell (service → `...` → Shell):
+
 ```python
 import asyncio
 from app.models.database import AsyncSessionLocal
@@ -576,7 +570,7 @@ Contributions are welcome! Please:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](./LICENSE).
 
 ---
 

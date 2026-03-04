@@ -1,0 +1,628 @@
+<svg viewBox="0 0 860 540" width="860" height="540" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&amp;display=swap');
+
+      * { font-family: 'IBM Plex Mono', 'Courier New', monospace; }
+
+      /* ── TIMING MASTER (total loop = 18s) ──────────────────────────
+         0.0 – 3.0s  : Login screen visible, idle
+         3.0 – 4.5s  : Button press + spinner
+         4.5 – 5.5s  : Transition flash → chat screen appears
+         5.5 – 7.0s  : Chat header + sidebar fade in
+         7.0 – 8.5s  : User question types in
+         8.5 – 10.5s : Typing indicator bounces
+        10.5 – 13.0s : Bot answer appears line by line
+        13.0 – 15.5s : Citations slide in
+        15.5 – 17.0s : Hold
+        17.0 – 18.0s : Fade out → restart
+      ────────────────────────────────────────────────────────────── */
+
+      /* ── REUSABLE KEYFRAMES ───────────────────────────────────────── */
+      @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+      @keyframes fadeOut { from{opacity:1} to{opacity:0} }
+
+      @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+      @keyframes slideUp {
+        from { opacity:0; transform:translateY(10px) }
+        to   { opacity:1; transform:translateY(0) }
+      }
+
+      @keyframes bounce {
+        0%,100%{ transform:translateY(0); opacity:.7 }
+        50%    { transform:translateY(-4px); opacity:1 }
+      }
+
+      @keyframes spinR { to { transform:rotate(360deg) } }
+
+      @keyframes pulse {
+        0%,100%{ opacity:.35 }
+        50%    { opacity:.8 }
+      }
+
+      @keyframes expandWidth {
+        from { width:0 }
+        to   { width:100% }
+      }
+
+      @keyframes typeReveal {
+        from { clip-path: inset(0 100% 0 0) }
+        to   { clip-path: inset(0 0% 0 0) }
+      }
+
+      /* ═══════════════════════════════════════════════════════════════
+         LOGIN SCREEN
+      ═══════════════════════════════════════════════════════════════ */
+      #login-screen {
+        animation: loginShow 18s linear infinite;
+      }
+      @keyframes loginShow {
+        0%    { opacity:1 }
+        22%   { opacity:1 }  /* 4.0s */
+        28%   { opacity:0 }  /* 5.0s */
+        94%   { opacity:0 }  /* 17.0s */
+        97%   { opacity:0 }
+        100%  { opacity:1 }
+      }
+
+      /* sign-in button normal */
+      #btn-normal {
+        animation: btnNormal 18s linear infinite;
+      }
+      @keyframes btnNormal {
+        0%   { opacity:1 }
+        16%  { opacity:1 }   /* 3.0s */
+        19%  { opacity:0 }   /* 3.4s */
+        100% { opacity:0 }
+      }
+
+      /* sign-in button loading */
+      #btn-loading {
+        animation: btnLoading 18s linear infinite;
+      }
+      @keyframes btnLoading {
+        0%   { opacity:0 }
+        16%  { opacity:0 }
+        19%  { opacity:1 }
+        25%  { opacity:1 }
+        28%  { opacity:0 }
+        100% { opacity:0 }
+      }
+
+      /* spinner inside button */
+      #spinner {
+        animation: spinR .7s linear infinite, spinnerVisibility 18s linear infinite;
+        transform-origin: 190px 384px;
+      }
+      @keyframes spinnerVisibility {
+        0%,16%,28%,100% { opacity:0 }
+        19%,25%          { opacity:1 }
+      }
+
+      /* ═══════════════════════════════════════════════════════════════
+         TRANSITION FLASH
+      ═══════════════════════════════════════════════════════════════ */
+      #flash {
+        animation: flashAnim 18s linear infinite;
+      }
+      @keyframes flashAnim {
+        0%,24%  { opacity:0 }
+        25%     { opacity:.18 }
+        27%     { opacity:0 }
+        100%    { opacity:0 }
+      }
+
+      /* ═══════════════════════════════════════════════════════════════
+         CHAT SCREEN
+      ═══════════════════════════════════════════════════════════════ */
+      #chat-screen {
+        animation: chatShow 18s linear infinite;
+      }
+      @keyframes chatShow {
+        0%,27%  { opacity:0; transform:scale(.98) }
+        31%     { opacity:1; transform:scale(1) }
+        94%     { opacity:1 }
+        97%     { opacity:0 }
+        100%    { opacity:0 }
+      }
+
+      /* topbar slide down */
+      #topbar {
+        animation: topbarAnim 18s linear infinite;
+      }
+      @keyframes topbarAnim {
+        0%,27%  { transform:translateY(-40px); opacity:0 }
+        32%     { transform:translateY(0);     opacity:1 }
+        100%    { transform:translateY(0);     opacity:1 }
+      }
+
+      /* sidebar fade */
+      #sidebar {
+        animation: sidebarAnim 18s linear infinite;
+      }
+      @keyframes sidebarAnim {
+        0%,29%  { opacity:0; transform:translateX(-10px) }
+        34%     { opacity:1; transform:translateX(0) }
+        100%    { opacity:1 }
+      }
+
+      /* chat main area */
+      #chat-main {
+        animation: chatMainAnim 18s linear infinite;
+      }
+      @keyframes chatMainAnim {
+        0%,30%  { opacity:0 }
+        35%     { opacity:1 }
+        100%    { opacity:1 }
+      }
+
+      /* ── USER MESSAGE ─────────────────────────────────────────────── */
+      #msg-user {
+        animation: msgUserAnim 18s linear infinite;
+      }
+      @keyframes msgUserAnim {
+        0%,38%  { opacity:0; transform:translateY(8px) }
+        42%     { opacity:1; transform:translateY(0) }
+        100%    { opacity:1 }
+      }
+
+      /* typing text reveal inside user bubble */
+      #user-text {
+        animation: userTextAnim 18s linear infinite;
+      }
+      @keyframes userTextAnim {
+        0%,38%  { clip-path:inset(0 100% 0 0) }
+        47%     { clip-path:inset(0 0% 0 0) }
+        100%    { clip-path:inset(0 0% 0 0) }
+      }
+
+      /* cursor blink in input field */
+      #input-cursor {
+        animation: blink .6s step-end infinite, cursorVis 18s linear infinite;
+      }
+      @keyframes cursorVis {
+        0%,34%  { opacity:0 }
+        35%     { opacity:1 }
+        47%     { opacity:0 }
+        100%    { opacity:0 }
+      }
+
+      /* input text reveal */
+      #input-text {
+        animation: inputTextAnim 18s linear infinite;
+      }
+      @keyframes inputTextAnim {
+        0%,35%  { clip-path:inset(0 100% 0 0) }
+        46%     { clip-path:inset(0 0% 0 0) }
+        47%     { clip-path:inset(0 100% 0 0) }
+        100%    { clip-path:inset(0 100% 0 0) }
+      }
+
+      /* ── TYPING INDICATOR ─────────────────────────────────────────── */
+      #typing-row {
+        animation: typingVis 18s linear infinite;
+      }
+      @keyframes typingVis {
+        0%,46%  { opacity:0; transform:translateY(6px) }
+        48%     { opacity:1; transform:translateY(0) }
+        57%     { opacity:1 }
+        59%     { opacity:0 }
+        100%    { opacity:0 }
+      }
+
+      #dot1 { animation: bounce .9s  0s   ease-in-out infinite, typingVis 18s linear infinite; transform-origin: 278px 425px; }
+      #dot2 { animation: bounce .9s .15s  ease-in-out infinite, typingVis 18s linear infinite; transform-origin: 293px 425px; }
+      #dot3 { animation: bounce .9s .30s  ease-in-out infinite, typingVis 18s linear infinite; transform-origin: 308px 425px; }
+
+      /* ── BOT MESSAGE ──────────────────────────────────────────────── */
+      #msg-bot {
+        animation: msgBotAnim 18s linear infinite;
+      }
+      @keyframes msgBotAnim {
+        0%,58%  { opacity:0; transform:translateY(8px) }
+        62%     { opacity:1; transform:translateY(0) }
+        100%    { opacity:1 }
+      }
+
+      /* bot text lines reveal sequentially */
+      #bot-line1 { animation: botLine1 18s linear infinite; }
+      @keyframes botLine1 {
+        0%,60%  { opacity:0 } 63% { opacity:1 } 100% { opacity:1 }
+      }
+      #bot-line2 { animation: botLine2 18s linear infinite; }
+      @keyframes botLine2 {
+        0%,63%  { opacity:0 } 66% { opacity:1 } 100% { opacity:1 }
+      }
+      #bot-line3 { animation: botLine3 18s linear infinite; }
+      @keyframes botLine3 {
+        0%,66%  { opacity:0 } 69% { opacity:1 } 100% { opacity:1 }
+      }
+      #bot-line4 { animation: botLine4 18s linear infinite; }
+      @keyframes botLine4 {
+        0%,69%  { opacity:0 } 72% { opacity:1 } 100% { opacity:1 }
+      }
+
+      /* ── CITATIONS ────────────────────────────────────────────────── */
+      #citations-area {
+        animation: citVis 18s linear infinite;
+      }
+      @keyframes citVis {
+        0%,72%  { opacity:0; transform:translateY(6px) }
+        75%     { opacity:1; transform:translateY(0) }
+        100%    { opacity:1 }
+      }
+
+      #cit1 { animation: cit1Anim 18s linear infinite; }
+      @keyframes cit1Anim {
+        0%,73%  { opacity:0; transform:translateY(5px) }
+        76%     { opacity:1; transform:translateY(0) }
+        100%    { opacity:1 }
+      }
+      #cit2 { animation: cit2Anim 18s linear infinite; }
+      @keyframes cit2Anim {
+        0%,76%  { opacity:0; transform:translateY(5px) }
+        79%     { opacity:1; transform:translateY(0) }
+        100%    { opacity:1 }
+      }
+      #cit3 { animation: cit3Anim 18s linear infinite; }
+      @keyframes cit3Anim {
+        0%,79%  { opacity:0; transform:translateY(5px) }
+        82%     { opacity:1; transform:translateY(0) }
+        100%    { opacity:1 }
+      }
+
+      /* ── PULSE DOT ───────────────────────────────────────────────── */
+      .pulse-ring { animation: pulse 1.4s ease-in-out infinite; }
+
+      /* ── SEND BUTTON FLASH ────────────────────────────────────────── */
+      #btn-send-flash {
+        animation: sendFlash 18s linear infinite;
+      }
+      @keyframes sendFlash {
+        0%,46%   { opacity:0 }
+        47%      { opacity:1 }
+        49%      { opacity:0 }
+        100%     { opacity:0 }
+      }
+    </style>
+
+    <!-- gradients & filters -->
+    <linearGradient id="gBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#060d18"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </linearGradient>
+    <linearGradient id="gAccent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="gUserBubble" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#0369a1"/>
+      <stop offset="100%" stop-color="#0ea5e9cc"/>
+    </linearGradient>
+    <linearGradient id="gSurface" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0d1b2e"/>
+      <stop offset="100%" stop-color="#0a1525"/>
+    </linearGradient>
+    <filter id="fGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="fSoftGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="fShadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000" flood-opacity=".55"/>
+    </filter>
+    <pattern id="pGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0L0 0 0 40" fill="none" stroke="#1e3a5f" stroke-width=".4" opacity=".4"/>
+    </pattern>
+    <clipPath id="cScreen">
+      <rect width="860" height="540" rx="14"/>
+    </clipPath>
+    <clipPath id="cLoginCard">
+      <rect x="280" y="60" width="300" height="420" rx="12"/>
+    </clipPath>
+  </defs>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- CANVAS                                                        -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <rect width="860" height="540" fill="url(#gBg)" rx="14"/>
+  <rect width="860" height="540" fill="url(#pGrid)" rx="14" opacity=".7"/>
+
+  <!-- ambient glows -->
+  <ellipse cx="430" cy="0"   rx="460" ry="160" fill="#0ea5e9" opacity=".04"/>
+  <ellipse cx="860" cy="540" rx="320" ry="180" fill="#8b5cf6" opacity=".05"/>
+
+  <!-- transition flash overlay -->
+  <rect id="flash" width="860" height="540" fill="#0ea5e9" rx="14" opacity="0"/>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- ① LOGIN SCREEN                                               -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <g id="login-screen">
+
+    <!-- ambient glow behind card -->
+    <ellipse cx="430" cy="270" rx="200" ry="160" fill="#0ea5e9" opacity=".05"/>
+
+    <!-- card -->
+    <rect x="280" y="60" width="300" height="420" rx="12"
+          fill="#0d1b2e" stroke="#1a3050" stroke-width="1.5" filter="url(#fShadow)"/>
+
+    <!-- logo -->
+    <rect x="377" y="92" width="56" height="56" rx="12" fill="url(#gAccent)" filter="url(#fGlow)"/>
+    <text x="405" y="130" text-anchor="middle" font-size="28">💼</text>
+
+    <!-- title -->
+    <text x="430" y="172" text-anchor="middle" font-size="13" font-weight="600"
+          letter-spacing="1" fill="#e2e8f0">ai-career-assistant</text>
+    <text x="430" y="188" text-anchor="middle" font-size="9" letter-spacing="3"
+          fill="#475569">RAG · JWT · CITED ANSWERS</text>
+
+    <!-- email field -->
+    <text x="298" y="213" font-size="8" letter-spacing="2" fill="#475569">EMAIL</text>
+    <rect x="294" y="219" width="272" height="34" rx="6"
+          fill="#112236" stroke="#1a3050" stroke-width="1"/>
+    <text x="308" y="240" font-size="11" fill="#94a3b8">admin@example.com</text>
+
+    <!-- password field -->
+    <text x="298" y="268" font-size="8" letter-spacing="2" fill="#475569">PASSWORD</text>
+    <rect x="294" y="274" width="272" height="34" rx="6"
+          fill="#112236" stroke="#1a3050" stroke-width="1"/>
+    <text x="308" y="296" font-size="14" letter-spacing="5" fill="#94a3b8">••••••••</text>
+
+    <!-- sign-in button — normal state -->
+    <g id="btn-normal">
+      <rect x="294" y="324" width="272" height="40" rx="8"
+            fill="#0ea5e9" filter="url(#fSoftGlow)"/>
+      <text x="430" y="349" text-anchor="middle" font-size="12"
+            font-weight="700" letter-spacing="3" fill="white">SIGN IN →</text>
+    </g>
+
+    <!-- sign-in button — loading state -->
+    <g id="btn-loading">
+      <rect x="294" y="324" width="272" height="40" rx="8" fill="#0369a1"/>
+      <text x="445" y="349" text-anchor="middle" font-size="11"
+            font-weight="600" letter-spacing="2" fill="white">AUTHENTICATING...</text>
+      <!-- spinner circle -->
+      <circle id="spinner" cx="313" cy="344" r="8"
+              fill="none" stroke="white" stroke-width="2"
+              stroke-dasharray="18 8" opacity="0"/>
+    </g>
+
+    <!-- demo creds -->
+    <rect x="294" y="378" width="272" height="62" rx="7"
+          fill="#060d18" stroke="#1a3050" stroke-width="1"/>
+    <text x="308" y="396" font-size="8" letter-spacing="2" fill="#475569">DEMO CREDENTIALS</text>
+    <text x="308" y="412" font-size="10" fill="#475569">admin@example.com</text>
+    <text x="308" y="428" font-size="10" fill="#475569">admin123  ·  role: </text>
+    <text x="412" y="428" font-size="10" font-weight="600" fill="#f97316">admin</text>
+
+  </g><!-- /login-screen -->
+
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- ② CHAT SCREEN                                                -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <g id="chat-screen" opacity="0">
+
+    <!-- ── TOPBAR ──────────────────────────────────────────────── -->
+    <g id="topbar">
+      <rect x="0" y="0" width="860" height="48"
+            fill="#0d1b2e" stroke="#1a3050" stroke-width="0"/>
+      <line x1="0" y1="48" x2="860" y2="48" stroke="#1a3050" stroke-width="1"/>
+
+      <!-- logo -->
+      <rect x="14" y="10" width="28" height="28" rx="7" fill="url(#gAccent)"/>
+      <text x="28" y="29" text-anchor="middle" font-size="14">💼</text>
+      <text x="52" y="29" font-size="12" font-weight="600" letter-spacing=".05em" fill="#e2e8f0">ai-career-assistant</text>
+
+      <!-- chat tab active -->
+      <rect x="190" y="0" width="72" height="48" fill="#0ea5e912"/>
+      <line x1="190" y1="46" x2="262" y2="46" stroke="#0ea5e9" stroke-width="2.5"/>
+      <text x="226" y="28" text-anchor="middle" font-size="10" font-weight="600"
+            letter-spacing="1" fill="#0ea5e9">💬 CHAT</text>
+
+      <!-- admin tab -->
+      <text x="305" y="26" text-anchor="middle" font-size="10" letter-spacing="1" fill="#475569">⚙️ ADMIN</text>
+      <rect x="320" y="16" width="38" height="15" rx="3"
+            fill="#f9731622" stroke="#f9731633" stroke-width="1"/>
+      <text x="339" y="27" text-anchor="middle" font-size="8" letter-spacing="1" fill="#f97316">admin</text>
+
+      <!-- user info -->
+      <circle cx="822" cy="24" r="14" fill="url(#gAccent)"/>
+      <text x="822" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="white">F</text>
+      <text x="800" y="19" text-anchor="end" font-size="11" font-weight="500" fill="#e2e8f0">Frederico</text>
+      <text x="800" y="32" text-anchor="end" font-size="9" fill="#475569">admin@example.com</text>
+
+      <!-- pulse dot -->
+      <circle cx="754" cy="24" r="5" fill="#22c55e" opacity=".3" class="pulse-ring"/>
+      <circle cx="754" cy="24" r="3.5" fill="#22c55e"/>
+    </g>
+
+    <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+    <g id="sidebar">
+      <rect x="0" y="48" width="190" height="492"
+            fill="#0a1525" stroke="#1a3050" stroke-width="0"/>
+      <line x1="190" y1="48" x2="190" y2="540" stroke="#1a3050" stroke-width="1"/>
+
+      <!-- sessions -->
+      <text x="14" y="76" font-size="8" letter-spacing="2" fill="#475569">SESSIONS</text>
+      <rect x="12" y="82" width="166" height="42" rx="7"
+            fill="#0ea5e912" stroke="#0ea5e933" stroke-width="1"/>
+      <text x="24" y="100" font-size="10" font-weight="600" fill="#0ea5e9">Session #1</text>
+      <text x="24" y="116" font-size="9" fill="#475569">Today</text>
+
+      <!-- knowledge base -->
+      <text x="14" y="146" font-size="8" letter-spacing="2" fill="#475569">KNOWLEDGE BASE</text>
+      <circle cx="21" cy="160" r="3.5" fill="#22c55e"/>
+      <text x="30" y="164" font-size="9" fill="#64748b">sample_cv.md</text>
+      <circle cx="21" cy="176" r="3.5" fill="#22c55e"/>
+      <text x="30" y="180" font-size="9" fill="#64748b">cover_letter.md</text>
+      <circle cx="21" cy="192" r="3.5" fill="#22c55e"/>
+      <text x="30" y="196" font-size="9" fill="#64748b">portfolio_projects.md</text>
+      <text x="14" y="214" font-size="9" fill="#334155">63 chunks indexed</text>
+
+      <!-- footer -->
+      <line x1="0" y1="496" x2="190" y2="496" stroke="#1a3050" stroke-width="1"/>
+      <circle cx="21" cy="510" r="3.5" fill="#22c55e" opacity=".35" class="pulse-ring"/>
+      <circle cx="21" cy="510" r="2.5" fill="#22c55e"/>
+      <text x="30" y="514" font-size="9" fill="#475569">Ollama llama3</text>
+      <text x="14" y="530" font-size="9" fill="#334155">STRICT_MODE: on</text>
+    </g>
+
+    <!-- ── CHAT MAIN ────────────────────────────────────────────── -->
+    <g id="chat-main">
+
+      <!-- chat header -->
+      <rect x="190" y="48" width="670" height="46"
+            fill="#0d1b2e" stroke="#1a3050" stroke-width="0"/>
+      <line x1="190" y1="94" x2="860" y2="94" stroke="#1a3050" stroke-width="1"/>
+      <text x="212" y="68" font-size="14">💬</text>
+      <text x="232" y="68" font-size="12" font-weight="600" fill="#e2e8f0">Career Assistant Chat</text>
+      <text x="232" y="83" font-size="9" fill="#475569">Ask anything about the professional profile</text>
+      <!-- badges -->
+      <rect x="714" y="56" width="70" height="16" rx="3"
+            fill="#22c55e22" stroke="#22c55e44" stroke-width="1"/>
+      <text x="749" y="68" text-anchor="middle" font-size="8" letter-spacing="1" fill="#22c55e">RAG active</text>
+      <rect x="792" y="56" width="56" height="16" rx="3"
+            fill="#8b5cf622" stroke="#8b5cf644" stroke-width="1"/>
+      <text x="820" y="68" text-anchor="middle" font-size="8" letter-spacing="1" fill="#8b5cf6">Session #1</text>
+
+      <!-- messages area bg -->
+      <rect x="190" y="94" width="670" height="400" fill="#080f1a"/>
+
+      <!-- input bar -->
+      <rect x="190" y="494" width="670" height="46"
+            fill="#0d1b2e" stroke="#1a3050" stroke-width="0"/>
+      <line x1="190" y1="494" x2="860" y2="494" stroke="#1a3050" stroke-width="1"/>
+      <rect x="200" y="503" width="542" height="28" rx="7"
+            fill="#060d18" stroke="#1a3050" stroke-width="1"/>
+
+      <!-- input placeholder / typed text -->
+      <text id="input-text" x="215" y="521" font-size="11" fill="#94a3b8"
+            style="clip-path:inset(0 100% 0 0)">
+        What cloud certifications does the candidate hold?
+      </text>
+      <!-- placeholder text (visible when input empty) -->
+      <text x="215" y="521" font-size="10" fill="#334155">Ask about skills, experience, certifications...</text>
+      <!-- cursor -->
+      <rect id="input-cursor" x="215" y="508" width="1.5" height="16" fill="#0ea5e9" opacity="0"/>
+
+      <!-- send button normal -->
+      <rect x="750" y="502" width="96" height="28" rx="7" fill="#0ea5e9"/>
+      <text x="798" y="521" text-anchor="middle" font-size="10" font-weight="700"
+            letter-spacing="1" fill="white">SEND ↑</text>
+
+      <!-- send button flash on click -->
+      <rect id="btn-send-flash" x="750" y="502" width="96" height="28" rx="7"
+            fill="white" opacity="0"/>
+
+    </g><!-- /chat-main -->
+
+    <!-- ── USER MESSAGE ────────────────────────────────────────── -->
+    <g id="msg-user">
+      <rect x="390" y="106" width="456" height="40" rx="10"
+            fill="url(#gUserBubble)" stroke="#0ea5e944" stroke-width="1"/>
+      <g id="user-text" style="clip-path:inset(0 100% 0 0)">
+        <text x="404" y="122" font-size="10" fill="white">What cloud certifications does</text>
+        <text x="404" y="138" font-size="10" fill="white">the candidate hold?</text>
+      </g>
+      <text x="838" y="142" text-anchor="end" font-size="8" fill="rgba(255,255,255,.4)">14:02</text>
+    </g>
+
+    <!-- ── TYPING INDICATOR ────────────────────────────────────── -->
+    <g id="typing-row">
+      <rect x="202" y="410" width="82" height="28" rx="10"
+            fill="#112236" stroke="#1a3050" stroke-width="1"/>
+      <circle id="dot1" cx="226" cy="424" r="4" fill="#0ea5e9"/>
+      <circle id="dot2" cx="241" cy="424" r="4" fill="#0ea5e9"/>
+      <circle id="dot3" cx="256" cy="424" r="4" fill="#0ea5e9"/>
+      <text x="296" y="428" font-size="9" fill="#334155">searching knowledge base...</text>
+    </g>
+
+    <!-- ── BOT MESSAGE ─────────────────────────────────────────── -->
+    <g id="msg-bot">
+      <!-- bubble -->
+      <rect x="202" y="158" width="470" height="118" rx="10"
+            fill="#112236" stroke="#1a3050" stroke-width="1"/>
+
+      <!-- bot header -->
+      <circle cx="220" cy="175" r="10" fill="url(#gAccent)"/>
+      <text x="220" y="179" text-anchor="middle" font-size="10">🤖</text>
+      <text x="234" y="179" font-size="9" font-weight="700" letter-spacing="1" fill="#0ea5e9">CAREER ASSISTANT</text>
+      <rect x="362" y="167" width="64" height="15" rx="3"
+            fill="#22c55e22" stroke="#22c55e44" stroke-width="1"/>
+      <text x="394" y="178" text-anchor="middle" font-size="8" fill="#22c55e">3 sources</text>
+
+      <!-- lines -->
+      <text id="bot-line1" x="216" y="200" font-size="10" fill="#94a3b8" opacity="0">
+        The candidate holds <tspan font-weight="600" fill="#e2e8f0">3 cloud certifications:</tspan>
+      </text>
+      <text id="bot-line2" x="216" y="218" font-size="10" fill="#94a3b8" opacity="0">
+        • Google Professional Cloud Architect (2023)
+        <tspan fill="#0ea5e9" font-weight="700"> [Source 1]</tspan>
+      </text>
+      <text id="bot-line3" x="216" y="236" font-size="10" fill="#94a3b8" opacity="0">
+        • Certified Kubernetes Administrator (CKA)
+        <tspan fill="#0ea5e9" font-weight="700"> [Source 2]</tspan>
+      </text>
+      <text id="bot-line4" x="216" y="254" font-size="10" fill="#94a3b8" opacity="0">
+        • AWS Solutions Architect – Associate (2020)
+        <tspan fill="#0ea5e9" font-weight="700"> [Source 3]</tspan>
+      </text>
+
+      <text x="664" y="270" text-anchor="end" font-size="8" fill="#334155">14:02</text>
+    </g>
+
+    <!-- ── CITATIONS ────────────────────────────────────────────── -->
+    <g id="citations-area" opacity="0">
+      <text x="205" y="288" font-size="9" fill="#475569">▼ show 3 citations</text>
+
+      <!-- cit 1 -->
+      <g id="cit1" opacity="0">
+        <rect x="202" y="295" width="466" height="34" rx="5"
+              fill="#060d18" stroke="#1a3050" stroke-width="1"/>
+        <rect x="202" y="295" width="3" height="34" rx="1" fill="#0ea5e9"/>
+        <text x="212" y="309" font-size="8" font-weight="700" fill="#0ea5e9" letter-spacing=".5">
+          [Source 1]  sample_cv.md § Certifications
+        </text>
+        <text x="212" y="323" font-size="9" fill="#475569" font-style="italic">
+          "Google Professional Cloud Architect (2023) — score 89%"
+        </text>
+      </g>
+
+      <!-- cit 2 -->
+      <g id="cit2" opacity="0">
+        <rect x="202" y="334" width="466" height="34" rx="5"
+              fill="#060d18" stroke="#1a3050" stroke-width="1"/>
+        <rect x="202" y="334" width="3" height="34" rx="1" fill="#0ea5e9"/>
+        <text x="212" y="348" font-size="8" font-weight="700" fill="#0ea5e9" letter-spacing=".5">
+          [Source 2]  sample_cv.md § Certifications
+        </text>
+        <text x="212" y="362" font-size="9" fill="#475569" font-style="italic">
+          "Certified Kubernetes Administrator (CKA) — CNCF, 2022"
+        </text>
+      </g>
+
+      <!-- cit 3 -->
+      <g id="cit3" opacity="0">
+        <rect x="202" y="373" width="466" height="34" rx="5"
+              fill="#060d18" stroke="#1a3050" stroke-width="1"/>
+        <rect x="202" y="373" width="3" height="34" rx="1" fill="#0ea5e9"/>
+        <text x="212" y="387" font-size="8" font-weight="700" fill="#0ea5e9" letter-spacing=".5">
+          [Source 3]  sample_cv.md § Certifications
+        </text>
+        <text x="212" y="401" font-size="9" fill="#475569" font-style="italic">
+          "AWS Solutions Architect – Associate (2020)"
+        </text>
+      </g>
+    </g><!-- /citations-area -->
+
+  </g><!-- /chat-screen -->
+
+  <!-- outer border -->
+  <rect width="860" height="540" fill="none" stroke="#1e3a5f" stroke-width="1.5" rx="14"/>
+</svg>
