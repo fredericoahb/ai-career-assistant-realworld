@@ -57,8 +57,6 @@
 
 ## Architecture
 
-![System Architecture](./docs/diagrams/architecture.svg)
-
 The system runs as a Docker Compose stack with three services: a **Streamlit frontend** (Chat UI + Admin Panel), a **FastAPI backend** (Auth, Ingest, RAG Pipeline), and a **database layer** that swaps between SQLite+FAISS (dev) and PostgreSQL+pgvector (prod). The LLM provider is fully pluggable via environment variables.
 
 ```
@@ -70,8 +68,6 @@ User → Streamlit (8501) → FastAPI (8000) → RAG Pipeline → LLM (Ollama/Gr
 ---
 
 ## RAG Pipeline (per query)
-
-![RAG Pipeline Flow](./docs/diagrams/rag-pipeline.svg)
 
 Each incoming question goes through a 5-stage pipeline:
 
@@ -100,8 +96,6 @@ Each incoming question goes through a 5-stage pipeline:
 
 ## Auth & RBAC
 
-![Auth and RBAC Flow](./docs/diagrams/auth-rbac.svg)
-
 Authentication uses **JWT (HS256)** with a 7-day expiry. Passwords are hashed with **bcrypt**. FastAPI's dependency injection system enforces role-based access:
 
 - `get_current_user()` — verifies the token and loads the user for all protected routes
@@ -115,8 +109,6 @@ Authentication uses **JWT (HS256)** with a 7-day expiry. Passwords are hashed wi
 ---
 
 ## Vector Store (DEV vs PROD)
-
-![Vector Store Dev vs Prod](./docs/diagrams/vector-store.svg)
 
 The vector store is abstracted behind a common interface (`search()`, `add()`, `delete()`). Switching modes requires only a single environment variable change — no code modifications:
 
