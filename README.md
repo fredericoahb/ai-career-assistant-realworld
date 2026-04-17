@@ -4,6 +4,7 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg)](https://fastapi.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![SDD](https://img.shields.io/badge/docs-SDD-informational)](./docs/SDD.md)
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/fredericoahb/ai-career-assistant-realworld?quickstart=1)
 
@@ -16,6 +17,7 @@
 
 ## Table of Contents
 
+- [Software Design (SDD)](#software-design-sdd)
 - [Features](#features)
 - [Architecture](#architecture)
 - [RAG Pipeline](#rag-pipeline-per-query)
@@ -32,6 +34,29 @@
 - [Project Structure](#project-structure)
 - [Cloud Deployment (Free)](#cloud-deployment-free)
 - [Contributing](#contributing)
+
+---
+
+## Software Design (SDD)
+
+This project follows a **Software Design Document (SDD)** methodology — all architecture decisions, component responsibilities, data models, API contracts, and non-functional requirements are captured before and during development in a living design document.
+
+The SDD covers:
+
+| Section | Contents |
+|---|---|
+| [System Overview](./docs/SDD.md#2-system-overview) | Goals, non-goals, user roles |
+| [Architecture Design](./docs/SDD.md#3-architecture-design) | Service topology, Docker Compose, runtime |
+| [Component Design](./docs/SDD.md#4-component-design) | Auth, RAG, API, frontend breakdown |
+| [Data Design](./docs/SDD.md#5-data-design) | ER model, table schemas, vector index schemas |
+| [API Design](./docs/SDD.md#6-api-design) | All endpoints, request/response contracts |
+| [RAG Pipeline Design](./docs/SDD.md#7-rag-pipeline-design) | Ingestion & query flows, chunker, LLM abstraction |
+| [Security Design](./docs/SDD.md#8-security-design) | JWT, RBAC, input validation, secrets |
+| [Deployment Architecture](./docs/SDD.md#9-deployment-architecture) | Dev, free-tier prod, scaled prod, CI/CD |
+| [Design Decisions](./docs/SDD.md#10-design-decisions--trade-offs) | FAISS vs Chroma, pgvector vs Qdrant, local embeddings, Strict Mode |
+| [Non-Functional Requirements](./docs/SDD.md#11-non-functional-requirements) | Performance targets, reliability, observability, testability |
+
+> **[→ Read the full SDD](./docs/SDD.md)**
 
 ---
 
@@ -414,6 +439,7 @@ ai-career-assistant-realworld/
 │   └── sample_cv.md                # Fictional CV for demo (no real PII)
 │
 ├── docs/
+│   ├── SDD.md                      # Software Design Document (architecture, data models, decisions)
 │   └── diagrams/                   # Architecture & flow diagrams
 │       ├── architecture.svg
 │       ├── rag-pipeline.svg
